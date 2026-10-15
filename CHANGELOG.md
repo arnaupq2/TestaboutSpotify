@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.60.1](https://github.com/arnaupq2/TestaboutSpotify/compare/v0.60.0...v0.60.1) (2026-10-15)
+
+
+### Fixes
+
+* avoid capturing CGRect arrays in animation blocks ([4b01e65](https://github.com/arnaupq2/TestaboutSpotify/commit/4b01e6543f76d0e3b059293356b519943e8c5fb6))
+* avoid executable-bit dependency in build pipeline ([8fc8350](https://github.com/arnaupq2/TestaboutSpotify/commit/8fc8350ceb38ac1517480f266b9d49f22786c2e7))
+* invoke build scripts through explicit interpreters ([1a14991](https://github.com/arnaupq2/TestaboutSpotify/commit/1a14991979fc798d6578aab254281e7b1f712bc2))
+
 ## [0.22.0](https://github.com/skopevoj/spoti.pw/compare/v0.21.1...v0.22.0) (2026-09-23)
 
 
