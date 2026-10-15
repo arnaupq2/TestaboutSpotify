@@ -13,12 +13,37 @@ static void roundCorners(UIView *view, CGFloat radius) {
     if (layer.cornerCurve != kCACornerCurveContinuous) layer.cornerCurve = kCACornerCurveContinuous;
 }
 
+static char kBackingKey;
+
+// Top picks' cards (a cover over 200pt wide) sit on a glass card, like the Music app's top shelf.
+static void backing(UIView *card, BOOL large) {
+    UIView *back = objc_getAssociatedObject(card, &kBackingKey);
+    if (!large) { back.hidden = YES; return; }
+    if (!back) {
+        back = [UIView new];
+        back.userInteractionEnabled = NO;
+        back.accessibilityElementsHidden = YES;
+        back.backgroundColor = [UIColor colorWithWhite:1 alpha:0.13];
+        back.layer.cornerCurve = kCACornerCurveContinuous;
+        back.layer.borderWidth = 1;
+        back.layer.borderColor = [UIColor colorWithWhite:1 alpha:0.10].CGColor;
+        objc_setAssociatedObject(card, &kBackingKey, back, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    }
+    if (back.superview != card) [card insertSubview:back atIndex:0];
+    back.hidden = NO;
+    if (!CGRectEqualToRect(back.frame, card.bounds)) back.frame = card.bounds;
+    CGFloat radius = 32;
+    if (back.layer.cornerRadius != radius) back.layer.cornerRadius = radius;
+}
+
 static void roundCover(UIView *card) {
     UIView *holder = SGRFindByIdentifier(card, @"Encore.ImageView", &kImageKey);
     if (holder.bounds.size.width < kCoverMinWidth) return;
+    BOOL large = holder.bounds.size.width >= 200;
+    backing(card, large);
     for (UIView *sub in holder.subviews) {
         if (![sub isKindOfClass:UIImageView.class]) continue;
-        roundCorners(sub, SGRRadiusCover);
+        roundCorners(sub, large ? 32 : SGRRadiusCover);
         if (!sub.layer.masksToBounds) sub.layer.masksToBounds = YES;
     }
 }
@@ -38,8 +63,9 @@ static void calmDJ(UIView *card) {
 static void style(UIView *button) {
     NSString *identifier = button.accessibilityIdentifier;
     if ([identifier isEqualToString:@"Shortcut.Card.Home"]) {
-        roundCorners(button, SGRRadiusCover);
-        if (button.superview.layer.cornerRadius > 0) roundCorners(button.superview, SGRRadiusCover);
+        CGFloat pill = button.bounds.size.height / 2;
+        roundCorners(button, pill);
+        if (button.superview.layer.cornerRadius > 0) roundCorners(button.superview, pill);
         SGRHomeStyleTile(button);
         return;
     }

@@ -16,6 +16,7 @@
 #import "Home.h"
 
 static const CGFloat kScale = 1.7, kSmallest = 120, kHeading = 40;
+static char kAuraKey, kAuraShownKey, kAuraImageKey;
 static char kLargeKey, kNaturalKey, kWrappedKey, kWidthKey, kAskedKey;
 static _Thread_local BOOL sg_enlarging;
 // The narrowest size kSmallest or more wide the running provider made, at Spotify's width: its cards.
@@ -132,8 +133,86 @@ static CGFloat growth(CGFloat width) {
 }
 %end
 
+
+// The page's gradient: behind the list, in the colour of the cover at the shelf's leading edge, so it changes as the
+// large shelf is scrolled. Cells lose their base-surface backgrounds so it shows through.
+static UICollectionView *pageListOf(UIView *shelf) {
+    for (UIView *v = shelf.superview; v; v = v.superview) {
+        if ([v isKindOfClass:UICollectionView.class] && v != shelf) return (UICollectionView *)v;
+    }
+    return nil;
+}
+
+static UIImage *coverOf(UIView *card) {
+    UIView *holder = SGRFindByIdentifier(card, @"Encore.ImageView", &kAuraImageKey);
+    for (UIView *sub in holder.subviews) {
+        if ([sub isKindOfClass:UIImageView.class] && ((UIImageView *)sub).image) return ((UIImageView *)sub).image;
+    }
+    return nil;
+}
+
+static void paintAura(UICollectionView *list, UIColor *color) {
+    CAGradientLayer *gradient = objc_getAssociatedObject(list, &kAuraKey);
+    if (!gradient) {
+        gradient = [CAGradientLayer layer];
+        gradient.zPosition = -1;
+        gradient.locations = @[@0, @0.35, @1];
+        objc_setAssociatedObject(list, &kAuraKey, gradient, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+        [list.layer insertSublayer:gradient atIndex:0];
+        for (UIView *cell in list.subviews) {
+            SGForEachView(cell, ^(UIView *v) {
+                if (SGIsBaseSurface(v.layer.backgroundColor)) v.layer.backgroundColor = NULL;
+            });
+        }
+    }
+    CGFloat over = 600, span = 620;
+    CGRect frame = CGRectMake(0, -over - list.adjustedContentInset.top, list.bounds.size.width, over + span);
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
+    if (!CGRectEqualToRect(gradient.frame, frame)) gradient.frame = frame;
+    [CATransaction commit];
+    NSArray *to = @[(id)color.CGColor, (id)color.CGColor, (id)[color colorWithAlphaComponent:0].CGColor];
+    CABasicAnimation *fade = [CABasicAnimation animationWithKeyPath:@"colors"];
+    fade.fromValue = gradient.presentationLayer.colors ?: gradient.colors;
+    fade.toValue = to;
+    fade.duration = SGRCrossfade;
+    [gradient addAnimation:fade forKey:@"colors"];
+    gradient.colors = to;
+}
+
+static void followAlbum(UICollectionView *shelf) {
+    UICollectionView *list = pageListOf(shelf);
+    if (!list) return;
+    UIView *lead = nil;
+    CGFloat best = CGFLOAT_MAX, edge = shelf.contentOffset.x + SGRSideMargin;
+    for (UICollectionViewCell *cell in shelf.visibleCells) {
+        CGFloat d = fabs(CGRectGetMinX(cell.frame) - edge);
+        if (d < best) { best = d; lead = cell; }
+    }
+    UIImage *image = lead ? coverOf(lead) : nil;
+    if (!image || objc_getAssociatedObject(shelf, &kAuraShownKey) == image) return;
+    objc_setAssociatedObject(shelf, &kAuraShownKey, image, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    __weak UICollectionView *weakShelf = shelf;
+    SGRPaletteRequest request = {0};
+    [SGRPalette paletteForImage:image request:request completion:^(SGRPalette *palette) {
+        UICollectionView *s = weakShelf;
+        if (!s || !palette || objc_getAssociatedObject(s, &kAuraShownKey) != image) return;
+        UICollectionView *page = pageListOf(s);
+        // The field colour is dark by design: lift it so the gradient reads like the cover's colour.
+        CGFloat h, sat, b, a;
+        UIColor *c = palette.fieldColor;
+        if ([c getHue:&h saturation:&sat brightness:&b alpha:&a]) c = [UIColor colorWithHue:h saturation:MIN(1, sat * 1.1) brightness:MIN(0.6, MAX(b, 0.1) * 1.9) alpha:1];
+        if (page) paintAura(page, c);
+    }];
+}
+
 // The large shelf's cards sized themselves after its cell was measured and no longer fit: measure the cell again.
 %hook _TtC16Home_CarouselKit29TouchCancellingCollectionView
+- (void)layoutSubviews {
+    %orig;
+    if (objc_getAssociatedObject(((UICollectionView *)self).collectionViewLayout, &kLargeKey)) followAlbum((UICollectionView *)self);
+}
+
 - (void)setContentSize:(CGSize)size {
     %orig;
     UICollectionView *shelf = (UICollectionView *)self;
@@ -149,10 +228,10 @@ static CGFloat growth(CGFloat width) {
 %end
 
 SGModRow *SGRHomeTopPicksRow(void) {
-    return SGWithSymbol(SGSwitchRow(@"Top picks", @"Home's first shelf drawn large", SGRKeyHomeTopPicks), @"rectangle.stack");
+    return SGWithSymbol(SGSwitchRow(@"Top picks", @"Home's first shelf drawn large, with a gradient from the album", SGRKeyHomeTopPicks), @"rectangle.stack");
 }
 
 %ctor {
-    if (!SGRedesignedUI() || !SGFlag(SGRKeyHomeTopPicks, NO)) return;
+    if (!SGRedesignedUI() || !SGFlag(SGRKeyHomeTopPicks, YES)) return;
     %init;
 }

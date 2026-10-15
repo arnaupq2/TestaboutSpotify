@@ -3,7 +3,7 @@
 #import "Home.h"
 
 // How far the cover sits in from the tile's top, bottom and leading edges, and its corners there.
-static const CGFloat kInset = 5, kCoverRadius = 4;
+static const CGFloat kInset = 6, kCoverRadius = 12;
 
 static char kSurfaceKey, kImageKey, kShownKey;
 
@@ -55,6 +55,22 @@ static UIView *surfaceIn(UIView *tile, UIView *fill) {
         else [tile insertSubview:surface atIndex:0];
     }
     if (!CGRectEqualToRect(surface.frame, tile.bounds)) surface.frame = tile.bounds;
+    CALayer *layer = surface.layer;
+    CGFloat radius = tile.bounds.size.height / 2;
+    if (layer.cornerRadius != radius) layer.cornerRadius = radius;
+    if (layer.cornerCurve != kCACornerCurveContinuous) layer.cornerCurve = kCACornerCurveContinuous;
+    layer.masksToBounds = YES;
+    layer.borderWidth = 1;
+    layer.borderColor = [UIColor colorWithWhite:1 alpha:0.22].CGColor;
+    CAGradientLayer *sheen = nil;
+    for (CALayer *sub in layer.sublayers) if ([sub isKindOfClass:CAGradientLayer.class]) sheen = (CAGradientLayer *)sub;
+    if (!sheen) {
+        sheen = [CAGradientLayer layer];
+        sheen.colors = @[(id)[UIColor colorWithWhite:1 alpha:0.20].CGColor, (id)[UIColor colorWithWhite:1 alpha:0.02].CGColor,
+                         (id)[UIColor colorWithWhite:0 alpha:0.18].CGColor];
+        [layer addSublayer:sheen];
+    }
+    if (!CGRectEqualToRect(sheen.frame, surface.bounds)) sheen.frame = surface.bounds;
     return surface;
 }
 
@@ -82,8 +98,16 @@ static void inset(UIView *square) {
     }
 }
 
+// The pill's colour: the cover's tint taken up to a glass-like, saturated level.
+static UIColor *vivid(UIColor *color) {
+    if (!color) return untinted();
+    CGFloat h, sat, b, a;
+    if (![color getHue:&h saturation:&sat brightness:&b alpha:&a]) return color;
+    return [UIColor colorWithHue:h saturation:MIN(1, sat * 1.15) brightness:MAX(b, 0.12) * 3.2 > 0.5 ? 0.5 : MAX(b, 0.12) * 3.2 alpha:1];
+}
+
 static void tint(UIView *tile, UIView *surface, UIColor *color, BOOL animated) {
-    color = color ?: untinted();
+    color = vivid(color);
     if ([surface.backgroundColor isEqual:color]) return;
     if (!animated || !tile.window) {
         surface.backgroundColor = color;
