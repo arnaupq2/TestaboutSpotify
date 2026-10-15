@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.60.1](https://github.com/arnaupq2/TestaboutSpotify/compare/v0.60.0...v0.60.1) (2026-10-15)
+
+
+### Fixes
+
+* bypass executable bit for IPA build entrypoint ([b8f82ea](https://github.com/arnaupq2/TestaboutSpotify/commit/b8f82ea9e66c6ecf959e405c9bd0b1ac046da6f7))
+* invoke pipeline helpers through interpreters ([d7e8a79](https://github.com/arnaupq2/TestaboutSpotify/commit/d7e8a790c526880a0215c50257de110651233045))
+* restore TabBar ARC-safe animation geometry ([81385da](https://github.com/arnaupq2/TestaboutSpotify/commit/81385dace8122e6a6bc54f70d68ea4b6f8dd7221))
+* run Makefile scripts through interpreters ([7e04e67](https://github.com/arnaupq2/TestaboutSpotify/commit/7e04e679eb4b6f33d35dd3c39c5be8a7560faccc))
+
 ## [0.22.0](https://github.com/skopevoj/spoti.pw/compare/v0.21.1...v0.22.0) (2026-09-23)
 
 
