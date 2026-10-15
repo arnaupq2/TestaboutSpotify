@@ -321,6 +321,9 @@ static void applyMinimized(UIView *stockBar, BOOL animated) {
     BOOL minimized = sg_minimized;
     CGRect circles[2], shapes[2];
     CGRect row = layoutDock(stockBar, host, bar, circles, shapes);
+    // Blocks cannot capture C arrays under ARC; copy the four CGRect values into scalar locals.
+    CGRect circle0 = circles[0], circle1 = circles[1];
+    CGRect shape0 = shapes[0], shape1 = shapes[1];
     NSArray<SGRDockButton *> *buttons = dockButtons(stockBar);
     bar.userInteractionEnabled = !minimized;
     for (SGRDockButton *button in buttons) button.userInteractionEnabled = minimized;
@@ -329,7 +332,7 @@ static void applyMinimized(UIView *stockBar, BOOL animated) {
     void (^move)(void) = ^{
         for (NSUInteger i = 0; i < 2; i++) {
             SGRDockButton *button = buttons[i];
-            place(button, minimized ? circles[i] : shapes[i]);
+            place(button, minimized ? (i == 0 ? circle0 : circle1) : (i == 0 ? shape0 : shape1));
             [button layoutIfNeeded];
         }
     };
@@ -338,7 +341,7 @@ static void applyMinimized(UIView *stockBar, BOOL animated) {
         for (NSUInteger i = 0; i < 2; i++) {
             SGRDockButton *button = buttons[i];
             if (button.alpha > 0.01) continue;
-            place(button, minimized ? shapes[i] : circles[i]);
+            place(button, minimized ? (i == 0 ? shape0 : shape1) : (i == 0 ? circle0 : circle1));
             [button layoutIfNeeded];
         }
     };
